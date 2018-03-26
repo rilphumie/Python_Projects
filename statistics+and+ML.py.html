@@ -1,0 +1,407 @@
+
+# coding: utf-8
+
+# In[1]:
+
+
+import numpy as np
+import pandas as pd
+from pandas import Series, DataFrame
+
+import matplotlib.pyplot as plt
+import seaborn as sb
+from pylab import rcParams
+
+import scipy
+from scipy.stats.stats import pearsonr
+
+
+# In[2]:
+
+
+get_ipython().magic('matplotlib inline')
+rcParams ['figure.figsize']=8,4
+plt.style.use('seaborn-whitegrid')
+
+
+# In[3]:
+
+
+cars = pd.read_csv("mtcars.csv")
+cars.columns = ['car_names','mpg','cyl','disp','hp','drat','wt','qsec','vs','am','gear','carb']
+cars.head()
+
+
+# In[4]:
+
+
+sb.pairplot(cars)
+
+
+# In[5]:
+
+
+
+x =cars[['mpg','hp','qsec','wt']]
+sb.pairplot(x)
+
+
+# In[17]:
+
+
+mpg =cars['mpg']
+hp = cars['hp']
+qsec= cars['qsec']
+wt= cars['wt']
+
+pearsonr_coefficient, p_value = pearsonr(mpg,hp)
+print('PearsonR Correlation Coefficient %0.3f' %(pearsonr_coefficient))
+
+
+
+# In[18]:
+
+
+pearsonr_coefficient, p_value = pearsonr(mpg,qsec)
+print('PearsonR Correlation Coefficient %0.3f' %(pearsonr_coefficient))
+
+
+
+# In[19]:
+
+
+pearsonr_coefficient, p_value = pearsonr(mpg,wt)
+print('PearsonR Correlation Coefficient %0.3f' %(pearsonr_coefficient))
+
+#this appears to have the strongest linear correlation.. its closer to 0
+
+
+# In[21]:
+
+
+corr = x.corr()
+corr
+
+
+# In[22]:
+
+
+sb.heatmap(corr, xticklabels=corr.columns.values,yticklabels=corr.columns.values)
+#dark red indicates strong range of positive corr
+
+
+# In[23]:
+
+
+from scipy.stats import spearmanr
+
+
+# In[24]:
+
+
+x=cars[['cyl','vs', 'am','gear']]
+sb.pairplot(x)
+
+
+# In[25]:
+
+
+cyl=cars['cyl']
+vs=cars['vs']
+am=cars['am']
+gear=cars['gear']
+spearmanr_coefficient, p_value= spearmanr(cyl,vs)
+print('Spearman Rank Correlation Coefficient %0.3f' %(spearmanr_coefficient))
+
+
+
+# In[26]:
+
+
+spearmanr_coefficient, p_value= spearmanr(cyl,am)
+print('Spearman Rank Correlation Coefficient %0.3f' %(spearmanr_coefficient))
+
+
+# In[27]:
+
+
+spearmanr_coefficient, p_value= spearmanr(cyl,gear)
+print('Spearman Rank Correlation Coefficient %0.3f' %(spearmanr_coefficient))
+
+
+# In[28]:
+
+
+#Chi-square
+table= pd.crosstab(cyl, am)
+from scipy.stats import chi2_contingency
+chi2, p,dof,expected= chi2_contingency(table.values)
+print ('Chi-square Statistic %0.3f p_value %0.3f'%(chi2,p))
+
+
+# In[30]:
+
+
+table= pd.crosstab(cars['cyl'], cars['vs'])
+chi2, p,dof,expected= chi2_contingency(table.values)
+print ('Chi-square Statistic %0.3f p_value %0.3f'%(chi2,p))
+
+
+# In[31]:
+
+
+table= pd.crosstab(cars['cyl'], cars['gear'])
+chi2, p,dof,expected= chi2_contingency(table.values)
+print ('Chi-square Statistic %0.3f p_value %0.3f'%(chi2,p))
+
+
+# In[32]:
+
+
+#transforming dataset distributions
+import sklearn
+from sklearn import preprocessing
+from sklearn.preprocessing import scale
+
+
+# In[33]:
+
+
+sb.set_style('whitegrid')
+
+
+# In[34]:
+
+
+mpg= cars.mpg
+plt.plot(mpg)
+
+
+# In[36]:
+
+
+cars[['mpg']].describe()
+
+
+# In[47]:
+
+
+mpg_matrix = mpg.values.reshape(-1,1)
+scaled = preprocessing.MinMaxScaler()
+scaled_mpg=scaled.fit_transform(mpg_matrix)
+plt.plot(scaled_mpg)
+
+
+# In[48]:
+
+
+mpg_matrix = mpg.values.reshape(-1,1)
+scaled = preprocessing.MinMaxScaler(feature_range = (0,10))
+scaled_mpg=scaled.fit_transform(mpg_matrix)
+plt.plot(scaled_mpg)
+
+
+# In[50]:
+
+
+#standardize a variable by using a scale function
+standardized_mpg=scale(mpg,axis=0, with_mean=False, with_std=False)
+plt.plot(standardized_mpg)
+
+
+# In[52]:
+
+
+standardized_mpg=scale(mpg)
+plt.plot(standardized_mpg)
+
+
+# In[53]:
+
+
+from sklearn.decomposition import FactorAnalysis
+from sklearn import datasets
+
+
+# In[74]:
+
+
+
+url = "https://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data"
+names = ['sepal-length', 'sepal-width', 'petal-length', 'petal-width', 'class']
+dataset = pd.read_csv(url, names=names)
+
+
+# In[76]:
+
+
+dataset.head()
+
+
+# In[85]:
+
+
+
+dataset[0:10]
+
+
+# In[97]:
+
+
+iris = datasets.load_iris()
+x= iris.data
+variable_names= iris.feature_names
+x[0:10]
+
+
+# In[98]:
+
+
+factor = FactorAnalysis().fit(x)
+pd.DataFrame(factor.components_, columns=variable_names)
+
+
+# In[101]:
+
+
+from IPython.display import Image
+from IPython.core.display import HTML
+from sklearn import decomposition
+from sklearn.decomposition import PCA
+
+
+# In[102]:
+
+
+pca = decomposition.PCA() #PCA
+iris_pca = pca.fit_transform(x)
+
+pca.explained_variance_ratio_
+
+
+# In[103]:
+
+
+pca.explained_variance_ratio_.sum()
+
+
+# In[104]:
+
+
+comps = pd.DataFrame(pca.components_, columns= variable_names)
+comps
+
+
+# In[105]:
+
+
+sb.heatmap(comps)
+
+
+# In[108]:
+
+
+df=pd.read_csv("irisdata.txt",header = None, sep=',' )
+df.columns = ['sepal-length', 'sepal-width', 'petal-length', 'petal-width', 'species']
+x= df.ix[:,0:4].values
+y=df.ix[:,4].values
+df[:5]
+
+
+# In[109]:
+
+
+df.boxplot(return_type='dict')
+plt.plot()
+
+
+# In[110]:
+
+
+sepal_width= x[:,1]
+iris_outliers = (sepal_width > 4)
+df[iris_outliers]
+
+
+# In[111]:
+
+
+sepal_width= x[:,1]
+iris_outliers = (sepal_width < 2.05)
+df[iris_outliers]
+
+
+# In[115]:
+
+
+#applying tukey outlier labeling
+pd.options.display.float_format = '{:.1f}'.format
+x_df =pd.DataFrame(x)
+print (x_df.describe())
+
+
+# In[116]:
+
+
+df=pd.read_csv("irisdata.txt",header = None, sep=',' )
+df.columns = ['sepal-length', 'sepal-width', 'petal-length', 'petal-width', 'species']
+x= df.ix[:,0:4].values
+y=df.ix[:,4].values
+df[:5]
+
+sb.boxplot(x='species', y='sepal-length', data=df,palette='hls')
+
+
+# In[117]:
+
+
+sb.pairplot(df, hue = 'species',palette='hls')
+
+
+# In[118]:
+
+
+from sklearn.cluster import DBSCAN
+from collections import Counter
+
+
+# In[119]:
+
+
+df=pd.read_csv("irisdata.txt",header = None, sep=',' )
+df.columns = ['sepal-length', 'sepal-width', 'petal-length', 'petal-width', 'species']
+data= df.ix[:,0:4].values
+target=df.ix[:,4].values
+df[:5]
+
+
+# In[122]:
+
+
+model=DBSCAN(eps=0.8, min_samples=19).fit(data)
+print (model)
+
+
+# In[125]:
+
+
+outliers_df = pd.DataFrame(data)
+print (Counter(model.labels_))
+print (outliers_df[model.labels_==-1])
+
+
+# In[126]:
+
+
+fig =plt.figure()
+ax =fig.add_axes([.1,.1,1,1])
+
+colors= model.labels_
+
+ax.scatter(data[:,2],data[:,1], c = colors, s=120)
+ax.set_xlabel('petal-length')
+ax.set_ylabel('sepal-width')
+plt.title('DBScan for Outlier Detection')
+# Not less than 5% of data should be marked as outliers
+#DBSCAN also said this info is from sparse side of the data
+

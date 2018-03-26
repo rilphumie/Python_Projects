@@ -1,0 +1,698 @@
+
+# coding: utf-8
+
+# # Explore Farmerline's Data
+# - Prepare the report for our first deliverable (2/24)
+
+# In[594]:
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import datetime
+import numpy as np
+
+get_ipython().magic('matplotlib inline')
+get_ipython().magic("config InlineBackend.figure_format = 'retina'")
+
+
+# Five data files
+#  - calls.csv
+#  - call_schedules.csv
+#  - call_status.csv
+#  - languages.csv
+#  - locations.csv
+#  - subscribers.csv
+
+# ---
+# ## Data import
+
+# In[452]:
+
+
+calls = pd.read_csv('calls.csv')
+print len(calls)
+
+
+# In[453]:
+
+
+calls.head(3)
+
+
+# - calls.csv is the transaction log of communications sent to farmers
+
+# In[454]:
+
+
+schedules = pd.read_csv('call_schedules.csv')
+print len(schedules)
+
+
+# In[455]:
+
+
+schedules.head(3)
+
+
+# In[456]:
+
+
+# too many rows to visualize output, so just print the first row
+schedules.iloc[0]
+
+
+# - call_schedules.csv maps the calls that were made(from calls.csv) to the scheduling mechanism
+# - join the data on `call_schedule_id`
+# - important: the farmer's preferred time to receive that call is `schedule_time/date` (not sure how often this is explicit rather than a default value)
+
+# In[457]:
+
+
+status = pd.read_csv('call_status.csv')
+print len(status)
+
+
+# In[458]:
+
+
+status
+
+
+# - the status id maps to calls.csv and status in (5, 6) indicates a success
+
+# In[459]:
+
+
+languages = pd.read_csv('languages.csv')
+print len(languages)
+
+
+# In[460]:
+
+
+languages.head()
+
+
+# - will be interesting to cut the data by language
+
+# In[461]:
+
+
+locations = pd.read_csv('locations.csv')
+print len(locations)
+
+
+# In[462]:
+
+
+locations.head()
+
+
+# - how does language and location intersect? 
+# - are there any patterns in the sense of wrong language for a given location?
+
+# In[463]:
+
+
+subscribers = pd.read_csv('subscribers.csv')
+print len(subscribers)
+
+
+# In[464]:
+
+
+subscribers.head()
+
+
+# - this gives us actual location data and voice/sms preferences per farmer
+
+# ---
+# ## Data merge 
+
+# In[465]:
+
+
+# just get needed columns from each file
+x_calls = calls[['id','call_schedule_id','subscriber_id','queued_on','call_status_id','retried_times','start_timestamp','end_timestamp','total_seconds','seconds_completed']]
+x_calls.columns = ['call_id','call_schedule_id','subscriber_id','queued_on','call_status_id','retried_times','start_timestamp','end_timestamp','total_seconds','seconds_completed']
+x_schedules = schedules[['id','voice','sms','schedule_date','schedule_time']]
+x_schedules.columns = ['schedule_id','voice','sms','schedule_date','schedule_time']
+
+# convert the look up tables to series
+x_status = pd.Series(status.set_index(status['id'])['name'])
+x_language = pd.Series(languages.set_index(languages['id'])['name'])
+x_locations = pd.Series(locations.set_index(locations['id'])['name'])
+
+
+# In[466]:
+
+
+x = pd.concat((
+        x_calls.copy().merge(x_schedules, how='left', left_on='call_schedule_id', right_on='schedule_id'),
+        x_calls.call_status_id.map(x_status)
+    ), axis=1)
+x.columns = [u'call_id',u'call_schedule_id', u'subscriber_id', u'queued_on',
+       u'call_status_id',u'retried_times',u'start_timestamp', u'end_timestamp',
+       u'total_seconds', u'seconds_completed', u'schedule_id', u'voice',
+       u'sms', u'schedule_date', u'schedule_time', u'call_status']
+x = x[[u'call_id', u'call_schedule_id', u'subscriber_id', u'queued_on',
+       u'call_status_id', u'retried_times', u'start_timestamp', u'end_timestamp',
+       u'total_seconds', u'seconds_completed', u'voice',
+       u'sms', u'schedule_date', u'schedule_time', u'call_status']]
+x.head()
+
+
+# In[468]:
+
+
+x_subscribers = pd.concat((subscribers,
+                           subscribers.location_id.map(x_locations),
+                           subscribers.language_id.map(x_language)
+                          ), axis=1)
+x_subscribers.columns = ['subscriber_id','receive_voice','receive_sms','language_id','lat','long','created_ts','updated_ts','location_id','location','language']
+x_subscribers = x_subscribers[['subscriber_id','receive_voice','receive_sms','location','language']]
+x_subscribers.head()
+
+
+# In[469]:
+
+
+y = x.merge(x_subscribers, how='left', on='subscriber_id')
+y.head()
+
+
+# In[470]:
+
+
+y.to_csv('merged_data.csv')
+
+
+# In[471]:
+
+
+print y.call_id.nunique()
+print len(y)
+
+
+# ---
+# ## High level plots
+
+# In[474]:
+
+
+z = y.copy()
+z['success'] = 0
+z.loc[z.call_status.isin(['Finished (incomplete)','Finished (complete)']), 'success'] = 1
+
+
+# In[475]:
+
+
+100 * (z.call_status.value_counts() / z.call_status.value_counts().sum())
+
+
+# In[476]:
+
+
+z.success.value_counts() / z.success.value_counts().sum() 
+
+
+# In[477]:
+
+
+ax = (z.call_status.value_counts() / z.call_status.value_counts().sum())    .plot(kind='bar',rot=80)
+ax.set_title('Call Status Summary')
+ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+ax.set_yticklabels(ytix, rotation = 0);
+
+
+# In[479]:
+
+
+ax = (z.groupby('location').call_id.nunique().sort_values() / z.groupby('location').call_id.nunique().sort_values().sum())[        (z.groupby('location').call_id.nunique().sort_values() / z.groupby('location').call_id.nunique().sort_values().sum()) > 0.0001]    .plot(kind='bar',rot=80)
+ax.set_title('Location Summary')
+ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+ax.set_yticklabels(ytix, rotation = 0);
+
+
+# In[480]:
+
+
+ax = (z.groupby('language').call_id.nunique().sort_values() / z.groupby('language').call_id.nunique().sort_values().sum())[    (z.groupby('language').call_id.nunique().sort_values() / z.groupby('language').call_id.nunique().sort_values().sum()) > 0.01]    .plot(kind='bar',rot=80)
+ax.set_title('Language Summary')
+ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+ax.set_yticklabels(ytix, rotation = 0);
+
+
+# In[481]:
+
+
+zz = z.set_index(pd.to_datetime(z['queued_on']), drop=False)
+
+
+# In[483]:
+
+
+ax = zz.groupby([pd.TimeGrouper('M')]).    success.mean().    plot()
+ax.set_title('Monthly Call Success Rate')
+ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+ax.set_yticklabels(ytix, rotation = 0);
+
+
+# In[484]:
+
+
+zz[zz.index >= '2017-06-01'].success.mean()
+
+
+# In[485]:
+
+
+ax = zz.groupby([pd.TimeGrouper('M')]).    call_id.nunique().    plot()
+ax.set_title('Monthly Calls Made')
+#ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+#ax.set_yticklabels(ytix, rotation = 0);
+
+
+# In[486]:
+
+
+farmer_call_count = zz.subscriber_id.value_counts()
+
+
+# In[489]:
+
+
+farmer_call_count.head()
+
+
+# In[490]:
+
+
+(farmer_call_count < 10).sum() / float(len(farmer_call_count))
+
+
+# In[491]:
+
+
+(farmer_call_count == 1).sum() / float(len(farmer_call_count))
+
+
+# In[492]:
+
+
+zz.head()
+
+
+# In[493]:
+
+
+# avg time of day the calls are queued 
+# time delta of queued vs scheduled time
+
+
+# In[494]:
+
+
+zz.head()
+
+
+# In[495]:
+
+
+pd.to_datetime(zz.queued_on).dt.dayofweek.head()
+
+
+# In[496]:
+
+
+dow ={'Mon':0,
+'Tue':1,
+'Wed':2,
+'Thu':3,
+'Fri':4,
+'Sat':5,
+'Sun':6
+}
+dow = {y:x for x,y in dow.iteritems()}
+
+
+# In[497]:
+
+
+tmp = pd.to_datetime(zz.queued_on).dt.dayofweek.map(dow).value_counts().reindex(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])
+tmp
+
+
+# In[498]:
+
+
+ax = (tmp/tmp.sum())    .plot(kind='bar',rot=80)
+ax.set_title('Queued Calls by Day of Week')
+ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+ax.set_yticklabels(ytix, rotation = 0);
+
+
+# In[499]:
+
+
+tmp2 = pd.to_datetime(zz.queued_on).dt.hour.value_counts().sort_index()
+tmp2
+
+
+# In[500]:
+
+
+ax = (tmp2/tmp2.sum())    .plot(kind='bar',rot=80)
+ax.set_title('Queued Calls by Hour of Day')
+ax.set_xlabel('Hour of Day')
+ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+ax.set_yticklabels(ytix, rotation = 0);
+
+
+# In[501]:
+
+
+zz[['schedule_time','queued_on']].head()
+
+
+# In[518]:
+
+
+zzts = zz[(zz.schedule_time.notnull())&(zz.queued_on.notnull())]
+zzts['queued_time'] = pd.to_datetime(zzts.queued_on).dt.time
+ts1 = pd.to_datetime(zzts.schedule_time).dt.time 
+ts2 = pd.to_datetime(zzts.queued_on).dt.time
+
+
+# In[519]:
+
+
+zz.schedule_time.isnull().sum()
+
+
+# In[520]:
+
+
+zz.queued_on.isnull().sum()
+
+
+# In[521]:
+
+
+zz[['schedule_time','queued_on']].head()
+
+
+# In[504]:
+
+
+ts2
+
+
+# In[511]:
+
+
+ts1.iloc[0]
+
+
+# In[512]:
+
+
+print len(ts1)
+print len(ts2)
+
+
+# In[506]:
+
+
+ts2.iloc[0]
+
+
+# In[510]:
+
+
+datetime.datetime.combine(datetime.date.today(), ts1.iloc[0]) - datetime.datetime.combine(datetime.date.today(), ts2.iloc[0])
+
+
+# In[522]:
+
+
+ts1.head()
+
+
+# In[524]:
+
+
+ts2.head()
+
+
+# In[533]:
+
+
+ts11 = ts1.apply(lambda x: datetime.datetime.combine(datetime.date.today(), x))
+ts22 = ts2.apply(lambda x: datetime.datetime.combine(datetime.date.today(), x))
+
+
+# In[538]:
+
+
+(ts11 - ts22).max()
+
+
+# In[627]:
+
+
+ts3 = pd.concat((ts11, ts22, zz.success),axis=1)
+
+
+# In[628]:
+
+
+ts3['same'] = ts11 - ts22 == pd.Timedelta('0')
+
+
+# In[634]:
+
+
+ts3.tail(999).head()
+
+
+# In[636]:
+
+
+y.tail(999).head()
+
+
+# In[637]:
+
+
+ts3[ts3.same==False].head(15)
+
+
+# In[638]:
+
+
+z.head()
+
+
+# In[639]:
+
+
+z.schedule_time.value_counts()
+
+
+# In[640]:
+
+
+queued_minus_scheduled_seconds = (ts22 - ts11).dt.seconds
+
+
+# In[641]:
+
+
+queued_minus_scheduled_seconds.head()
+
+
+# In[643]:
+
+
+queued_minus_scheduled_seconds.describe()
+
+
+# In[644]:
+
+
+ax = queued_minus_scheduled_seconds.plot(kind='hist',bins=range(601))
+ax.set_title('Call Scheduling:\nQueued Time Minus Scheduled Time')
+ax.set_xlabel('Time that a call was queued after it was scheduled (in seconds)')
+
+
+# In[645]:
+
+
+zzt = zz.copy()
+zzt['network'] = 0
+zzt.loc[zzt.call_status == 'Failed (network)','network'] = 1
+zzt['hod'] = pd.to_datetime(zzt.queued_on).dt.hour
+zzt['dow'] = pd.to_datetime(zzt.queued_on).dt.dayofweek.map(dow)
+zzt.tail()
+
+
+# In[646]:
+
+
+zzt.groupby('dow').network.mean().plot()
+
+
+# In[669]:
+
+
+ax = zzt.groupby('dow').network.mean().reindex(['Mon','Tue','Wed','Thu','Fri','Sat','Sun']).plot(kind='bar',rot=80)
+ax.set_title('Calls with Network Failure')
+ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+ax.set_yticklabels(ytix, rotation = 0);
+
+
+# In[673]:
+
+
+ax = zzt.groupby('dow').success.mean().reindex(['Mon','Tue','Wed','Thu','Fri','Sat','Sun']).plot(kind='bar',rot=80)
+ax.set_title('Successful Calls')
+ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+ax.set_yticklabels(ytix, rotation = 0);
+
+
+# In[671]:
+
+
+100*zzt.groupby('dow').network.mean().reindex(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])
+
+
+# In[650]:
+
+
+jj = pd.concat((queued_minus_scheduled_seconds,ts3),axis=1)
+jj.columns = ['delta','sched','queue','success','same']
+
+
+# In[651]:
+
+
+jj.head()
+
+
+# In[663]:
+
+
+jj['delta_bin'] = pd.cut(jj.delta, right=False, bins=[el*10 for el in range(61)])
+jj.head()
+
+
+# In[667]:
+
+
+jj.groupby('delta_bin').success.mean().plot()#.mean()
+
+
+# In[676]:
+
+
+ax = jj.groupby('delta').success.mean().head(600).plot()
+ax.set_title('')
+ax.set_title('Success Rate by Queued Time Minus Scheduled Time')
+ax.set_xlabel('Time that a call was queued after it was scheduled (in seconds)')
+ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+ax.set_yticklabels(ytix, rotation = 0);
+
+
+# In[582]:
+
+
+ts3.head()
+
+
+# In[568]:
+
+
+len((ts22-ts11)[ts22-ts11 > pd.Timedelta('1 minute')])
+
+
+# In[581]:
+
+
+ts3[ts22-ts11 > pd.Timedelta('5 minute')].schedule_time.value_counts()
+
+
+# In[565]:
+
+
+len((ts22-ts11)[ts22-ts11 <= pd.Timedelta('1 minute')])
+
+
+# In[566]:
+
+
+829631+564724
+
+
+# In[567]:
+
+
+len(calls)
+
+
+# ---
+# ## Farmers
+
+# In[604]:
+
+
+f = y[['subscriber_id','location','language']].drop_duplicates()
+f.head()
+
+
+# In[605]:
+
+
+print len(f)
+print y.subscriber_id.nunique()
+
+
+# In[606]:
+
+
+ax = (f.groupby('location').subscriber_id.nunique().sort_values() / f.groupby('location').subscriber_id.nunique().sort_values().sum())[        (f.groupby('location').subscriber_id.nunique().sort_values() / f.groupby('location').subscriber_id.nunique().sort_values().sum()) > 0.0001]    .plot(kind='bar',rot=80)
+ax.set_title('Location Summary')
+ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+ax.set_yticklabels(ytix, rotation = 0);
+
+
+# In[607]:
+
+
+ax = (f.groupby('language').subscriber_id.nunique().sort_values() / f.groupby('language').subscriber_id.nunique().sort_values().sum())[        (f.groupby('language').subscriber_id.nunique().sort_values() / f.groupby('language').subscriber_id.nunique().sort_values().sum()) > 0.0001]    .plot(kind='bar',rot=80)
+ax.set_title('Language Summary')
+ytix = [str(int(el*100))+'%' for el in ax.get_yticks().tolist()]
+ax.set_yticklabels(ytix, rotation = 0);
+
+
+# ---
+
+# In[608]:
+
+
+y.head()
+
+
+# In[611]:
+
+
+zz.head()
+
+
+# In[626]:
+
+
+zz.head()
+

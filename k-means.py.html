@@ -1,0 +1,253 @@
+
+# coding: utf-8
+
+# In[14]:
+
+
+import numpy as np
+import pandas as pd
+
+
+import matplotlib.pyplot as plt
+
+import sklearn 
+from sklearn.cluster import KMeans
+from mpl_toolkits.mplot3d import Axes3D
+from sklearn.preprocessing import scale
+import sklearn.metrics as sm
+from sklearn import datasets
+from sklearn.metrics import confusion_matrix, classification_report
+
+
+# In[18]:
+
+
+get_ipython().magic('matplotlib inline')
+plt.figure(figsize=(7,4))
+
+
+# In[19]:
+
+
+iris = datasets.load_iris()
+
+x = scale(iris.data)
+y = pd.DataFrame(iris.target)
+variable_names= iris.feature_names
+
+
+# In[20]:
+
+
+x[0:10]
+
+
+# In[21]:
+
+
+#cluster this data by instantiating the k-means object
+clustering = KMeans(n_clusters=3, random_state=5)
+#n_clusters = 3 tells python how many centroids to use for clustering
+#since iris data has 3 classes or category
+clustering.fit(x)
+
+
+# In[23]:
+
+
+iris_df =pd.DataFrame(iris.data)
+iris_df.columns= ['sepal_length','sepal_width','petal_length','petal_width']
+y.columns=['Targets']
+
+
+# In[26]:
+
+
+color_theme =np.array(['darkgray','lightsalmon','powderblue'])
+
+plt.subplot(1,2,1)
+plt.scatter(x=iris_df.petal_length,y=iris_df.petal_width, c= color_theme[iris.target],s=50)
+plt.title('Ground Truth Classification')
+
+plt.subplot(1,2,2)
+plt.scatter(x=iris_df.petal_length,y=iris_df.petal_width, c= color_theme[clustering.labels_],s=50)
+plt.title('K-Means Classification')
+
+
+# In[27]:
+
+
+relabel = np.choose(clustering.labels_, [2,0,1]).astype(np.int64)
+plt.subplot(1,2,1)
+plt.scatter(x=iris_df.petal_length,y=iris_df.petal_width, c= color_theme[iris.target],s=50)
+plt.title('Ground Truth Classification')
+
+plt.subplot(1,2,2)
+plt.scatter(x=iris_df.petal_length,y=iris_df.petal_width, c= color_theme[relabel],s=50)
+plt.title('K-Means Classification')
+
+
+# In[28]:
+
+
+#measuring the accuracy of my result
+print(classification_report(y,relabel))
+
+
+# In[29]:
+
+
+import scipy
+from scipy.cluster.hierarchy import dendrogram, linkage
+from scipy.cluster.hierarchy import fcluster
+from scipy.cluster.hierarchy import cophenet
+from scipy.spatial.distance import pdist
+
+import seaborn as sb
+
+from pylab import rcParams
+
+from sklearn.cluster import AgglomerativeClustering
+
+
+# In[32]:
+
+
+#Hierarchical Clustering
+np.set_printoptions(precision=4, suppress=True)
+plt.figure(figsize=(10,3))
+get_ipython().magic('matplotlib inline')
+plt.style.use('seaborn-whitegrid')
+
+
+# In[36]:
+
+
+cars = pd.read_csv("mtcars.csv")
+cars.columns = ['car_names','mpg','cyl','disp','hp','drat','wt','qsec','vs','am','gear','carb']
+
+x = cars.ix[:,(1,3,4,6)].values
+
+y=cars.ix[:,(9)].values
+
+
+# In[37]:
+
+
+z= linkage(x,'ward')
+
+
+# In[40]:
+
+
+dendrogram(z,truncate_mode='lastp', p=12,leaf_rotation=45,leaf_font_size=15,show_contracted=True)
+plt.title('Truncated Hierarchical Clustering Dendrogram')
+plt.xlabel('Cluster Size')
+plt.ylabel('Distance')
+
+plt.axhline(y=500)
+plt.axhline(y=150)
+plt.show()
+
+
+# In[41]:
+
+
+k=2
+
+Hclustering= AgglomerativeClustering(n_clusters=k, affinity = 'euclidean',linkage='ward')
+Hclustering.fit(x)
+
+sm.accuracy_score(y, Hclustering.labels_)
+
+
+# In[42]:
+
+
+Hclustering= AgglomerativeClustering(n_clusters=k, affinity = 'euclidean',linkage='complete')
+Hclustering.fit(x)
+
+sm.accuracy_score(y, Hclustering.labels_)
+
+
+# In[44]:
+
+
+Hclustering= AgglomerativeClustering(n_clusters=k, affinity = 'euclidean',linkage='average')
+Hclustering.fit(x)
+
+sm.accuracy_score(y, Hclustering.labels_)
+
+
+# In[45]:
+
+
+Hclustering= AgglomerativeClustering(n_clusters=k, affinity = 'manhattan',linkage='average')
+Hclustering.fit(x)
+
+sm.accuracy_score(y, Hclustering.labels_)
+
+
+# In[47]:
+
+
+#K-NN classification
+import urllib
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn import neighbors
+from sklearn import preprocessing
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+
+
+# In[48]:
+
+
+np.set_printoptions(precision=4, suppress=True)
+rcParams['figure.figsize']=7,4
+get_ipython().magic('matplotlib inline')
+plt.style.use('seaborn-whitegrid')
+
+
+# In[49]:
+
+
+cars = pd.read_csv("mtcars.csv")
+cars.columns = ['car_names','mpg','cyl','disp','hp','drat','wt','qsec','vs','am','gear','carb']
+
+x_prime = cars.ix[:,(1,3,4,6)].values
+
+y=cars.ix[:,(9)].values
+
+
+# In[50]:
+
+
+x= preprocessing.scale(x_prime)
+
+
+# In[51]:
+
+
+x_train, x_test, y_train, y_test= train_test_split(x,y,test_size=.33,random_state=17)
+
+
+# In[52]:
+
+
+#building and training my model with training data
+
+clf= neighbors.KNeighborsClassifier()
+clf.fit(x_train,y_train)
+print(clf)
+
+
+# In[54]:
+
+
+#Evaluating my model's predictions again the test dataset
+y_expect =y_test
+y_pred= clf.predict(x_test)
+
+print(metrics.classification_report(y_expect, y_pred))
+

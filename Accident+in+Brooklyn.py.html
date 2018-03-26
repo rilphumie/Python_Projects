@@ -1,0 +1,700 @@
+
+# coding: utf-8
+
+# In[5]:
+
+
+import numpy as np
+import pandas as pd
+from pandas import Series, DataFrame
+
+import matplotlib.pyplot as pp
+import matplotlib.pyplot as plt
+import seaborn as sb
+from pylab import rcParams
+import datetime as DT
+
+
+# In[6]:
+
+
+get_ipython().magic('matplotlib inline')
+rcParams ['figure.figsize']=15,8
+sb.set_style('whitegrid')
+import chardet
+
+
+
+# In[7]:
+
+
+data= pd.read_csv("nypd_mv_collisions")
+
+
+# In[93]:
+
+
+data
+
+
+# In[9]:
+
+
+data.columns
+
+
+# In[10]:
+
+
+brooklyndata= data.loc[data['borough']=='BROOKLYN']
+
+
+# In[11]:
+
+
+brooklyndata
+
+
+# In[12]:
+
+
+brooklyndata.groupby('contributing_factor_vehicle_1')['number_of_persons_injured'].mean()
+
+
+# In[13]:
+
+
+num_accidents_no_kill = len(brooklyndata.loc[brooklyndata['number_of_persons_killed']==0])
+
+
+# In[14]:
+
+
+num_accidents_with_kill= len(brooklyndata.loc[brooklyndata['number_of_persons_killed']!=0])
+brooklyn_accidents_with_kill = brooklyndata.loc[brooklyndata['number_of_persons_killed']!=0]
+
+
+# In[15]:
+
+
+num_accidents_with_kill
+
+
+# In[16]:
+
+
+brooklyn_accidents_with_kill
+
+
+# In[17]:
+
+
+brooklyn_accidents_with_kill_1=brooklyn_accidents_with_kill['contributing_factor_vehicle_1']
+
+
+# In[18]:
+
+
+brooklyn_accidents_with_kill_1.value_counts()
+
+
+# In[19]:
+
+
+brooklyn_accidents_with_kill_1.value_counts().plot(kind='bar')
+
+
+# In[20]:
+
+
+brooklyn_accidents=brooklyndata['contributing_factor_vehicle_1'].value_counts()
+
+
+# In[21]:
+
+
+brooklyn_accidents
+
+
+# In[22]:
+
+
+brooklyn_accidents.plot(kind='bar')
+
+
+# In[23]:
+
+
+drop_Unspecified=brooklyndata.loc[brooklyndata['contributing_factor_vehicle_1']!='Unspecified']
+
+
+# In[24]:
+
+
+drop_Unspecified
+
+
+# In[25]:
+
+
+factor_counts_no_Unspecified=drop_Unspecified['contributing_factor_vehicle_1'].value_counts()
+factor_counts_no_Unspecified.plot(kind='barh')
+
+
+# In[26]:
+
+
+factor_counts_no_Unspecified
+
+
+# In[27]:
+
+
+#cause_of_street_accident=
+drop_Unspecified_on_street=brooklyndata[pd.notnull(brooklyndata['on_street_name'])]
+
+
+# In[28]:
+
+
+drop_Unspecified_2=drop_Unspecified_on_street.loc[drop_Unspecified_on_street['contributing_factor_vehicle_1']!='Unspecified']
+
+
+# In[29]:
+
+
+drop_Unspecified_on_street['on_street_name']
+
+
+# In[30]:
+
+
+street_with_highest_accident=drop_Unspecified_2['on_street_name'].value_counts()
+top_ten_streets = street_with_highest_accident[:10]
+top_ten_streets.index
+
+
+# In[177]:
+
+
+top_ten_streets.plot(kind='bar')
+
+
+# In[32]:
+
+
+top_ten_street_df = drop_Unspecified_2.loc[drop_Unspecified_2['on_street_name'].isin(top_ten_streets.index)]
+top_ten_street_df.groupby('on_street_name')['contributing_factor_vehicle_1'].value_counts()
+
+
+# In[33]:
+
+
+for title,group in top_ten_street_df.groupby('on_street_name'):
+    print(title)
+    group['contributing_factor_vehicle_1'].value_counts().plot(kind='bar')
+    plt.show()
+    
+
+
+# In[34]:
+
+
+for title,group in top_ten_street_df.groupby('on_street_name'):
+    print(title)
+    group['contributing_factor_vehicle_1'].value_counts().plot(kind='bar')
+    plt.savefig(title)
+    plt.show()
+    
+    
+
+
+# In[315]:
+
+
+data2=data['borough'].value_counts()
+data2
+
+
+# In[36]:
+
+
+drop_Unspecified.groupby('contributing_factor_vehicle_1')['number_of_persons_injured'].sum()
+
+
+# In[37]:
+
+
+da=drop_Unspecified.groupby('contributing_factor_vehicle_1')['number_of_persons_injured'].count().plot(kind='bar')
+
+
+# In[38]:
+
+
+num_accidents_no_kill
+
+
+# In[39]:
+
+
+Injury_and_death=drop_Unspecified[['number_of_cyclist_injured', 'number_of_cyclist_killed',
+       'number_of_motorist_injured', 'number_of_motorist_killed',
+       'number_of_pedestrians_injured', 'number_of_pedestrians_killed',
+       'number_of_persons_injured', 'number_of_persons_killed']]
+
+
+# In[40]:
+
+
+Injury_and_death.sum()
+
+
+# In[41]:
+
+
+injury_alone=brooklyndata[['number_of_cyclist_injured','number_of_motorist_injured',
+                        'number_of_pedestrians_injured','number_of_persons_injured',]]
+injury_alone.sum()
+
+
+# In[42]:
+
+
+death_alone= brooklyndata[['number_of_cyclist_killed','number_of_motorist_killed',
+                        'number_of_pedestrians_killed','number_of_persons_killed',]]
+death_alone.sum()
+
+
+# In[43]:
+
+
+Injury_and_death.sum().plot(kind='bar')
+
+
+# In[44]:
+
+
+accident_by_on_street=drop_Unspecified[['number_of_cyclist_injured', 'number_of_cyclist_killed',
+       'number_of_motorist_injured', 'number_of_motorist_killed',
+       'number_of_pedestrians_injured', 'number_of_pedestrians_killed',
+       'number_of_persons_injured', 'number_of_persons_killed','on_street_name']]
+
+
+# In[45]:
+
+
+accident_count=accident_by_on_street.groupby('on_street_name')['on_street_name'].count()
+
+
+# In[46]:
+
+
+accident_count
+
+
+# In[94]:
+
+
+accident_count
+
+
+# In[48]:
+
+
+top_ten_street_df.groupby('on_street_name')['contributing_factor_vehicle_1'].count()
+
+
+# In[49]:
+
+
+top_ten_street_df = drop_Unspecified_2.loc[drop_Unspecified_2['on_street_name'].isin(top_ten_streets.index)]
+top_ten_street_df.groupby('on_street_name')['contributing_factor_vehicle_1'].value_counts()
+
+
+# In[50]:
+
+
+data['cross_street_name']
+
+
+# In[51]:
+
+
+brooklyndata.groupby('on_street_name')['number_of_persons_killed'].count()
+
+
+# In[52]:
+
+
+#vehicle_type_code1
+brooklyndata.groupby('vehicle_type_code1')['number_of_persons_killed'].count()
+
+
+# In[53]:
+
+
+vehicle_cause_of_accident=drop_Unspecified_on_street.groupby('vehicle_type_code1')['number_of_persons_injured'].count()
+
+
+# In[54]:
+
+
+vehicle_cause_of_accident
+
+
+# In[55]:
+
+
+accident_cause=drop_Unspecified['vehicle_type_code1'].value_counts()
+
+
+# In[56]:
+
+
+accident_cause
+
+
+# In[57]:
+
+
+accident_cause.plot(kind='bar')
+
+
+# In[124]:
+
+
+data = pd.read_csv("nypd_mv_collisions", parse_dates=[1], infer_datetime_format=True) #strip "at column" into date,time and day
+temp = pd.DatetimeIndex(data['timestamp'])
+data['Date'] = temp.date
+data['Time'] = temp.time
+data['day']=temp.day
+data['year']=temp.year
+
+
+# In[125]:
+
+
+data.head()
+
+
+# In[60]:
+
+
+brooklyndata= data.loc[data['borough']=='BROOKLYN']
+
+
+# In[61]:
+
+
+brooklyndata
+
+
+# In[325]:
+
+
+time_occurence=brooklyndata['Time'].value_counts()
+
+
+# In[326]:
+
+
+top_ten_time_occurence=time_occurence[:10]
+top_ten_time_occurence
+
+
+# In[319]:
+
+
+top_ten_time_occurence.mean()
+
+
+# In[65]:
+
+
+top_ten_time_occurence.plot(kind='bar')
+
+
+# In[173]:
+
+
+day_occurence=brooklyndata['day'].value_counts()
+
+
+# In[175]:
+
+
+day_occurence[:10]
+
+
+# In[68]:
+
+
+injury_alone_bystreet=brooklyndata[['number_of_cyclist_injured','number_of_motorist_injured',
+                        'number_of_pedestrians_injured','number_of_persons_injured']]
+injury_alone_bystreet.sum()
+
+
+# In[69]:
+
+
+drop_Unspecified_on_street['on_street_name'].value_counts()
+
+
+# In[70]:
+
+
+injury_alone_bystreet=brooklyndata[['number_of_cyclist_injured','number_of_motorist_injured',
+                        'number_of_pedestrians_injured','number_of_persons_injured','on_street_name']]
+injury_alone_bystreet
+
+
+# In[71]:
+
+
+dat=injury_alone_bystreet['on_street_name'].value_counts()
+dat
+
+
+# In[72]:
+
+
+death_alone_bystreet= brooklyndata[['number_of_cyclist_killed','number_of_motorist_killed',
+                        'number_of_pedestrians_killed','number_of_persons_killed','on_street_name']]
+death_alone_bystreet['on_street_name'].value_counts()
+
+
+# In[73]:
+
+
+injury_alone=brooklyndata[['number_of_cyclist_injured','number_of_motorist_injured',
+                        'number_of_pedestrians_injured','number_of_persons_injured',]]
+injury_alone.sum().plot(kind='pie')
+
+
+
+
+# In[74]:
+
+
+death_alone= brooklyndata[['number_of_cyclist_killed','number_of_motorist_killed',
+                        'number_of_pedestrians_killed','number_of_persons_killed',]]
+death_alone.sum().plot(kind='pie')
+
+
+# In[75]:
+
+
+import matplotlib.pyplot as plt
+plt.figure()
+values = [24,94,169,288]
+
+labels = ['number_of_cyclist_killed','number_of_motorist_killed',
+                        'number_of_pedestrians_killed','number_of_persons_killed'] 
+plt.pie( values,labels=labels, autopct='%.2f')
+plt.show()
+
+
+# In[76]:
+
+
+import matplotlib.pyplot as plt
+plt.figure()
+values = [7575,48008,16509,71360]
+
+labels = ['number_of_cyclist_injured','number_of_motorist_injured',
+                        'number_of_pedestrians_injured','number_of_persons_injured'] 
+plt.pie( values,labels=labels, autopct='%.2f')
+plt.show()
+
+
+
+# In[77]:
+
+
+Injury_and_death=drop_Unspecified[['number_of_cyclist_injured', 'number_of_cyclist_killed',
+       'number_of_motorist_injured', 'number_of_motorist_killed',
+       'number_of_pedestrians_injured', 'number_of_pedestrians_killed',
+       'number_of_persons_injured', 'number_of_persons_killed']]
+
+
+# In[78]:
+
+
+Injury_and_death.sum()
+
+
+# In[79]:
+
+
+plt.figure()
+values = [3549,11,22385,57,6990,90,32403,159]
+
+labels = ['number_of_cyclist_injured', 'number_of_cyclist_killed',
+       'number_of_motorist_injured', 'number_of_motorist_killed',
+       'number_of_pedestrians_injured', 'number_of_pedestrians_killed',
+       'number_of_persons_injured', 'number_of_persons_killed'] 
+plt.pie( values,labels=labels, autopct='%.2f')
+plt.show()
+
+
+# In[80]:
+
+
+drop_Unspecified_off_street=brooklyndata[pd.notnull(brooklyndata['off_street_name'])]
+
+
+# In[81]:
+
+
+drop_Unspecified_off_street[['off_street_name']]
+
+
+# In[82]:
+
+
+offstreet_with_highest_accident=drop_Unspecified_off_street['off_street_name'].value_counts()
+top_ten_streets2 = offstreet_with_highest_accident[:10]
+top_ten_streets2.index
+
+
+# In[83]:
+
+
+top_ten_streets2.plot(kind='bar')
+
+
+# In[84]:
+
+
+drop_Unspecified_cross_street=brooklyndata[pd.notnull(brooklyndata['cross_street_name'])]
+
+
+# In[85]:
+
+
+drop_Unspecified_cross_street['cross_street_name']
+
+
+# In[86]:
+
+
+crossstreet_with_highest_accident=drop_Unspecified_cross_street['cross_street_name'].value_counts()
+top_ten_streets3 = crossstreet_with_highest_accident[:10]
+top_ten_streets3.index
+
+
+# In[180]:
+
+
+top_ten_streets3.plot(kind='bar')
+
+
+# In[88]:
+
+
+death_alone_factor=drop_Unspecified_off_street[['number_of_cyclist_killed','number_of_motorist_killed',
+                        'number_of_pedestrians_killed','number_of_persons_killed','contributing_factor_vehicle_1']]
+
+
+# In[89]:
+
+
+groupdeath=death_alone_factor.groupby('contributing_factor_vehicle_1')['contributing_factor_vehicle_1'].value_counts()
+
+
+# In[90]:
+
+
+groupdeath
+
+
+# In[91]:
+
+
+time_contibuting_factor=brooklyndata.groupby('Time')['contributing_factor_vehicle_1'].count()
+
+
+# In[147]:
+
+
+year_growth= brooklyndata.groupby('on_street_name')['number_of_persons_injured'].count()
+
+
+# In[148]:
+
+
+year_growth.index
+
+
+# In[145]:
+
+
+street_with_highest_accident
+
+
+# In[168]:
+
+
+top_ten_street_df = drop_Unspecified_2.loc[drop_Unspecified_2['on_street_name'].isin(top_ten_streets.index)]
+top_ten_street_df.groupby('on_street_name')['number_of_persons_injured'].sum()
+
+
+# In[169]:
+
+
+top_ten_street_df = drop_Unspecified_2.loc[drop_Unspecified_2['on_street_name'].isin(top_ten_streets.index)]
+top_ten_street_df.groupby('on_street_name')['number_of_persons_killed'].sum()
+
+
+# In[302]:
+
+
+data4=brooklyndata.groupby('cross_street_name')['number_of_persons_injured'].value_counts()
+
+
+# In[303]:
+
+
+data4[:10]
+
+
+# In[191]:
+
+
+cross_street_data= brooklyndata[['cross_street_name','on_street_name','off_street_name','number_of_persons_injured','number_of_persons_killed']]
+
+
+# In[205]:
+
+
+cross_street_data[:10]
+
+
+# In[300]:
+
+
+group_cross_street=cross_street_data.groupby('cross_street_name')['number_of_persons_injured'].value_counts()
+
+
+# In[304]:
+
+
+group_cross_street[:10]
+
+
+# In[313]:
+
+
+#brooklyndata= data.loc[data['borough']=='BROOKLYN']
+groupings= cross_street_data.loc[cross_street_data['on_street_name']=='ATLANTIC AVENUE']
+grouping1=groupings.groupby('cross_street_name')['cross_street_name'].count()
+grouping1[:10].plot(kind='bar')
+
+
+
+# In[275]:
+
+
+#top_ten_street_df = drop_Unspecified_2.loc[drop_Unspecified_2['on_street_name'].isin(top_ten_streets.index)]
+sort= sorted(grouping1, reverse=True,)
+

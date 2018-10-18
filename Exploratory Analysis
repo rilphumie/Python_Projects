@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# # Explore Farmerline's Data
+# # Explore the Data
 # - Prepare the report for our deliverable
 
 # In[594]:
@@ -125,7 +125,7 @@ print len(subscribers)
 subscribers.head()
 
 
-# - this gives us actual location data and voice/sms preferences per farmer
+# - this gives us actual location data and voice/sms preferences per person
 
 # ---
 # ## Data merge 
